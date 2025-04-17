@@ -4,8 +4,23 @@ from media.sensor import *
 from media.display import *
 from media.media import *
 
-DETECT_WIDTH = ALIGN_UP(320, 16)
-DETECT_HEIGHT = 240
+DISPLAY_MODE = "LCD"  # 可选值: "VIRT", "LCD", "HDMI"
+
+# 根据模式设置显示宽高
+if DISPLAY_MODE == "VIRT":
+    # 虚拟显示器模式
+    DISPLAY_WIDTH = ALIGN_UP(1920, 16)
+    DISPLAY_HEIGHT = 1080
+elif DISPLAY_MODE == "LCD":
+    # 3.1寸屏幕模式
+    DISPLAY_WIDTH = 800
+    DISPLAY_HEIGHT = 480
+elif DISPLAY_MODE == "HDMI":
+    # HDMI扩展板模式
+    DISPLAY_WIDTH = 1920
+    DISPLAY_HEIGHT = 1080
+else:
+    raise ValueError("未知的 DISPLAY_MODE，请选择 'VIRT', 'LCD' 或 'HDMI'")
 
 sensor = None
 valid_corners = []
@@ -16,11 +31,16 @@ show_cross_flag = False
 
 def camera_init():
     global sensor
-    sensor = Sensor(width=DETECT_WIDTH, height=DETECT_HEIGHT)
+    sensor = Sensor(width=1920, height=1080)
     sensor.reset()
-    sensor.set_framesize(width=DETECT_WIDTH, height=DETECT_HEIGHT)
+    sensor.set_framesize(width=400,height=240)
     sensor.set_pixformat(Sensor.RGB565)
-    Display.init(Display.VIRT, width=DETECT_WIDTH, height=DETECT_HEIGHT, fps=100, to_ide=True)
+    if DISPLAY_MODE == "VIRT":
+        Display.init(Display.VIRT, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, fps=60,to_ide=True)
+    elif DISPLAY_MODE == "LCD":
+        Display.init(Display.ST7701, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, to_ide=True)
+    elif DISPLAY_MODE == "HDMI":
+        Display.init(Display.LT9611, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, to_ide=True)
     MediaManager.init()
     sensor.run()
 
@@ -82,8 +102,9 @@ def capture_picture():
             os.exitpoint()
             global sensor
             img = sensor.snapshot()
-
+            Display.show_image(img,x=0,y=0,layer = Display.LAYER_OSD0)
             rects = img.find_rects(threshold=10000)
+               
             for r in rects:
                 corners = r.corners()
                 if is_valid_rect(corners):
@@ -92,13 +113,13 @@ def capture_picture():
                     valid_corners.append(corners)
                     break  # 只处理一个，减少抖动
 
-            # 画稳定红框和角点（每帧）
+
             if stable_rect and rects:
                 img.draw_rectangle(stable_rect, color=(255, 0, 0), thickness=2)
                 for p in stable_corners:
                     img.draw_circle(p[0], p[1], 5, color=(0, 255, 0), thickness=2)
 
-            # 计算十字（每 5 次）
+
             if len(valid_corners) >= 5:
                 avg = average_corners(valid_corners[:5])
                 avg = offset_corners(avg, k=0.03)
@@ -106,12 +127,13 @@ def capture_picture():
                 show_cross_flag = True
                 valid_corners.clear()
 
-            # 每帧画十字（若有）
+
             if show_cross_flag and rects:
                 for x, y in avg_cross_points:
                     img.draw_cross(x, y, color=(255, 255, 0), size=8, thickness=2)
-            Display.show_image(img)
-            img = None
+                    
+            Display.show_image(img,x=DISPLAY_WIDTH-400,y=0,layer = Display.LAYER_OSD1)
+            
             gc.collect()
             print(fps.fps())
         except KeyboardInterrupt as e:
