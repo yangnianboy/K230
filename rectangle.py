@@ -5,7 +5,8 @@ from media.display import *
 from media.media import *
 
 DISPLAY_MODE = "LCD"  # 可选值: "VIRT", "LCD", "HDMI"
-
+DETECT_WIDTH  = 400  # 检测图像宽度
+DETECT_HEIGHT = 240  # 检测图像高度
 # 根据模式设置显示宽高
 if DISPLAY_MODE == "VIRT":
     # 虚拟显示器模式
@@ -33,7 +34,7 @@ def camera_init():
     global sensor
     sensor = Sensor(width=1920, height=1080)
     sensor.reset()
-    sensor.set_framesize(width=400,height=240)
+    sensor.set_framesize(width=DETECT_WIDTH,height=DETECT_HEIGHT)
     sensor.set_pixformat(Sensor.RGB565)
     if DISPLAY_MODE == "VIRT":
         Display.init(Display.VIRT, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, fps=60,to_ide=True)
