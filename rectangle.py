@@ -3,6 +3,8 @@ import time, os, gc, sys
 from media.sensor import *
 from media.display import *
 from media.media import *
+from machine import FPIOA
+from machine import UART
 
 DISPLAY_MODE = "LCD"  # 可选值: "VIRT", "LCD", "HDMI"
 DETECT_WIDTH  = 400  # 检测图像宽度
@@ -22,6 +24,13 @@ elif DISPLAY_MODE == "HDMI":
     DISPLAY_HEIGHT = 1080
 else:
     raise ValueError("未知的 DISPLAY_MODE，请选择 'VIRT', 'LCD' 或 'HDMI'")
+
+# UART & FPIOA 配置
+UART_ID       = UART.UART1
+UART_BAUD     = 115200
+UART_RX_PIN   = 18    # IO18 -> UART1_RX
+UART_TX_PIN   = 16    # IO16 -> UART1_TX
+# ----------------------------------
 
 sensor = None
 valid_corners = []
@@ -52,6 +61,14 @@ def camera_deinit():
     os.exitpoint(os.EXITPOINT_ENABLE_SLEEP)
     time.sleep_ms(100)
     MediaManager.deinit()
+
+def uart_init():
+    global uart
+    # 映射引脚
+    fpioa = FPIOA()
+    fpioa.set_function(UART_RX_PIN, FPIOA.UART1_RX)
+    fpioa.set_function(UART_TX_PIN, FPIOA.UART1_TX)
+    uart = UART(UART_ID, baudrate=UART_BAUD,bits=UART.EIGHTBITS, parity=UART.PARITY_NONE, stop=UART.STOPBITS_ONE, timeout=0)
 
 def euclid(p1, p2):
     dx = p2[0] - p1[0]
@@ -150,6 +167,8 @@ def main():
     try:
         print("camera init")
         camera_init()
+        uart_init()
+        print("uart init")
         camera_is_init = True
         print("camera capture")
         capture_picture()

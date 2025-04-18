@@ -2,7 +2,7 @@ import time, os, gc
 from media.sensor import Sensor
 from media.display import Display
 from media.media import MediaManager
-from fpioa_manager import fm
+from machine import FPIOA
 from machine import UART
 
 # ---------- 配置区 ----------
@@ -61,9 +61,10 @@ def camera_init():
 def uart_init():
     global uart
     # 映射引脚
-    fm.register(UART_RX_PIN, fm.fpioa.UART1_RX, force=True)
-    fm.register(UART_TX_PIN, fm.fpioa.UART1_TX, force=True)
-    uart = UART(UART_ID, UART_BAUD, read_buf_len=4096)
+    fpioa = FPIOA()
+    fpioa.set_function(UART_RX_PIN, FPIOA.UART1_RX)
+    fpioa.set_function(UART_TX_PIN, FPIOA.UART1_TX)
+    uart = UART(UART_ID, baudrate=UART_BAUD,bits=UART.EIGHTBITS, parity=UART.PARITY_NONE, stop=UART.STOPBITS_ONE, timeout=0)
 
 def camera_deinit():
     global sensor
@@ -86,6 +87,7 @@ def update_flags(cmd):
         recognize_green = False
 
 def detect_and_send(color_key, cmd_code, img):
+    global uart
     """检测指定颜色最大 blob 并通过 UART 发送坐标"""
     thresh = THRESHOLDS[color_key]
     blobs = img.find_blobs([thresh],
@@ -114,10 +116,9 @@ def capture_loop():
             Display.show_image(img, x=0, y=0, layer=Display.LAYER_OSD0)
 
             # 串口命令处理
-            if uart.any():
-                data = uart.read(1)
-                if data:
-                    update_flags(data[0])
+            data = uart.read()
+            if data:
+                update_flags(data[0])
 
             # 颜色检测
             if recognize_red:
