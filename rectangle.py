@@ -112,7 +112,8 @@ def offset_corners(corners, k=0.03):
 
 def capture_picture():
     global stable_rect, stable_corners, avg_cross_points, show_cross_flag
-
+    global valid_corners
+    global uart
     fps = time.clock()
     while True:
         fps.tick()
@@ -140,6 +141,9 @@ def capture_picture():
 
             if len(valid_corners) >= 5:
                 avg = average_corners(valid_corners[:5])
+                flat = [int(v) for p in avg for v in p]
+                packet =bytearray([0xAA] +flat)
+                uart.write(packet)
                 avg = offset_corners(avg, k=0.03)
                 avg_cross_points = avg
                 show_cross_flag = True
